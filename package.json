@@ -1,0 +1,14 @@
+{
+  "name": "residence-permit-renewal-bot",
+  "version": "1.0.0",
+  "description": "Simple bot to check the availability to schedule the renewal of your residence residence permit in PT",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "Fernando Natividade Luiz",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.1",
+    "@types/node": "^20.10.8"
+  }
+}
