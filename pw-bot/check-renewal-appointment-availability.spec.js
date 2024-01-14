@@ -25,19 +25,6 @@ const isAValidOption = (value) => {
   return value.trim() !== '' && !isNaN(Number(value)) && Number(value) >= 0;
 }
 
-const formatDate = (value = '') => {
-  if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
-    throw new Error('Provided date should have a valid ISO format.')
-  }
-
-  const datetime = new Date(value)
-  const localDatetime = new Date(datetime.getTime())
-  const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
-  const [date, time] = localDatetime.toLocaleTimeString([], options).split(',')
-
-  return `${ date }${ time }`
-}
-
 const getSelectValues = async (page, locator) => {
   return await page.locator(locator).evaluate((select) => {
     const options = Array.from(select.querySelectorAll('option'))
@@ -54,7 +41,8 @@ const checkAvailabilityByAttendancePlace = async (page, district, location, atte
   const noAppointmentElement = page.getByRole('heading', { name: 'There are no appointment' })
 
   if (!await noAppointmentElement.isVisible()) {
-    appointmentsAvailable.push({ district: district.text, location: location.text, attendancePlace: attendancePlace.text, date: formatDate(new Date().toISOString()) })
+    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' });
+    appointmentsAvailable.push({ district: district.text, location: location.text, attendancePlace: attendancePlace.text, date: currentDate })
   } 
 
   await page.getByRole('link', { name: 'Previous' }).click()
@@ -99,11 +87,14 @@ test('Check appointment availability', async ({ page }) => {
     if (district.value) await scanAppointmentAvailability(page, district)
   }
 
+
   if (appointmentsAvailable.length) {
-    const message = `Appointments available:\n${appointmentsAvailable.map(appointment => `${appointment.district}, ${appointment.location}, ${appointment.attendancePlace}, ${appointment.date}`).join('\n')}`
+    const message = `Locations available:\n${appointmentsAvailable.map(appointment => `${appointment.district}, ${appointment.location}, ${appointment.attendancePlace} - Scan time (PT): ${appointment.date}`).join('\n')}`
     console.table(appointmentsAvailable)
     await sendDiscordMessage(message)
   } else {
-    console.log("Unfortunately, there are no appointments available for this time:", formatDate(new Date().toISOString()));
+    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' });
+    const noSlotsMessage = `Unfortunately, there are no renewal slots available - Scan time (PT) ${currentDate}`;
+    await sendDiscordMessage(noSlotsMessage)
   }
 })
