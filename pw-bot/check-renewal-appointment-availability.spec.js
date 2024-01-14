@@ -1,6 +1,25 @@
-import { test, expect } from '@playwright/test'
+import 'dotenv/config';
+import { test, expect } from '@playwright/test';
+import { Client, GatewayIntentBits } from 'discord.js';
 
 const appointmentsAvailable = []
+
+const sendDiscordMessage = async (message) => {
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages
+    ],
+  })
+
+  await client.login(process.env.CLIENT_TOKEN)
+
+  client.on('ready', () => {
+    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID)
+    if (channel) channel.send(message)
+    client.destroy()
+  })
+}
 
 const isAValidOption = (value) => {
   return value.trim() !== '' && !isNaN(Number(value)) && Number(value) >= 0;
@@ -80,9 +99,11 @@ test('Check appointment availability', async ({ page }) => {
     if (district.value) await scanAppointmentAvailability(page, district)
   }
 
-  if (appointmentsAvailable.length) {  
+  if (appointmentsAvailable.length) {
+    const message = `Appointments available:\n${appointmentsAvailable.map(appointment => `${appointment.district}, ${appointment.location}, ${appointment.attendancePlace}, ${appointment.date}`).join('\n')}`
     console.table(appointmentsAvailable)
+    await sendDiscordMessage(message)
   } else {
-    console.log("Unfortunately there are no appointments available for this time:", formatDate(new Date().toISOString()))
+    console.log("Unfortunately, there are no appointments available for this time:", formatDate(new Date().toISOString()));
   }
 })
