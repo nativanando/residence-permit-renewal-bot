@@ -1,35 +1,45 @@
-import 'dotenv/config';
-import { test, expect } from '@playwright/test';
-import { Client, GatewayIntentBits } from 'discord.js';
+import 'dotenv/config'
+import { test, expect } from '@playwright/test'
+import { Client, GatewayIntentBits } from 'discord.js'
 
 const appointmentsAvailable = []
 
-const sendDiscordMessage = async (message) => {
-  try {
-    const client = new Client({
-      intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages
-      ],
-    })
+const sendDiscordMessage = (message) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const client = new Client({
+        intents: [
+          GatewayIntentBits.Guilds,
+          GatewayIntentBits.GuildMessages
+        ],
+      })
 
-    await client.login(process.env.CLIENT_TOKEN)
+      await client.login(process.env.CLIENT_TOKEN)
 
-    client.on('ready', () => {
-      const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID)
-      if (channel) {
-        channel.send(message).then(() => { console.log('Message sent successfully') })
-        .catch((error) => { console.error('Error sending message:', error) })
-        .finally(async () => { await client.destroy() })
-      }
-    })
-  } catch (error) {
-    console.error('Error initializing Discord client:', error);
-  }
+      client.on('ready', async () => {
+        const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID)
+        if (channel) {
+          try {
+            await channel.send(message)
+            console.log('Message sent successfully')
+            await client.destroy()
+            console.log('Client destroyed')
+            resolve()
+          } catch (error) {
+            console.error('Error sending message:', error)
+            reject(error)
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Error initializing Discord client:', error)
+      reject(error)
+    }
+  })
 }
 
 const isAValidOption = (value) => {
-  return value.trim() !== '' && !isNaN(Number(value)) && Number(value) >= 0;
+  return value.trim() !== '' && !isNaN(Number(value)) && Number(value) >= 0
 }
 
 const getSelectValues = async (page, locator) => {
@@ -48,7 +58,7 @@ const checkAvailabilityByAttendancePlace = async (page, district, location, atte
   const noAppointmentElement = page.getByRole('heading', { name: 'There are no appointment' })
 
   if (!await noAppointmentElement.isVisible()) {
-    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' });
+    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' })
     appointmentsAvailable.push({ district: district.text, location: location.text, attendancePlace: attendancePlace.text, date: currentDate })
   } 
 
@@ -86,7 +96,7 @@ test('Check appointment availability', async ({ page }) => {
   await page.locator('#IdCategoria').selectOption({ label: 'Citizen' })
   await page.locator('#IdSubcategoria').selectOption({ label: 'Residence permit'})
 
-  await page.getByRole('link', { name: 'Next' }).click();
+  await page.getByRole('link', { name: 'Next' }).click()
 
   const availableDistricts = await getSelectValues(page, '#IdDistrito')
   
@@ -99,19 +109,19 @@ test('Check appointment availability', async ({ page }) => {
     const message = `Locations available:\n${appointmentsAvailable.map(appointment => `${appointment.district}, ${appointment.location}, ${appointment.attendancePlace} - Scan time (PT): ${appointment.date}`).join('\n')}`
     console.table(appointmentsAvailable)
     try {
-      await sendDiscordMessage(message);
-      console.log('Message sent successfully');
+      await sendDiscordMessage(message)
+      console.log('Message sent successfully to Discord')
     } catch (error) {
-      console.error('Error sending message to Discord:', error);
+      console.error('Error sending message to Discord:', error)
     }
   } else {
-    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' });
-    const noSlotsMessage = `Unfortunately, there are no renewal slots available - Scan time (PT) ${currentDate}`;
+    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' })
+    const noSlotsMessage = `Unfortunately, there are no renewal slots available - Scan time (PT) ${currentDate}`
     try {
-      await sendDiscordMessage(noSlotsMessage);
-      console.log('Message sent successfully');
+      await sendDiscordMessage(noSlotsMessage)
+      console.log('Message sent successfully to Discord')
     } catch (error) {
-      console.error('Error sending message to Discord:', error);
+      console.error('Error sending message to Discord:', error)
     }
   }
 })
