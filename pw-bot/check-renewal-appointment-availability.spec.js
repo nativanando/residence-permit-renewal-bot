@@ -5,20 +5,27 @@ import { Client, GatewayIntentBits } from 'discord.js';
 const appointmentsAvailable = []
 
 const sendDiscordMessage = async (message) => {
-  const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages
-    ],
-  })
+  try {
+    const client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages
+      ],
+    })
 
-  await client.login(process.env.CLIENT_TOKEN)
+    await client.login(process.env.CLIENT_TOKEN)
 
-  client.on('ready', () => {
-    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID)
-    if (channel) channel.send(message)
-    client.destroy()
-  })
+    client.on('ready', () => {
+      const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID)
+      if (channel) {
+        channel.send(message).then(() => { console.log('Message sent successfully') })
+        .catch((error) => { console.error('Error sending message:', error) })
+        .finally(async () => { await client.destroy() })
+      }
+    })
+  } catch (error) {
+    console.error('Error initializing Discord client:', error);
+  }
 }
 
 const isAValidOption = (value) => {
@@ -91,10 +98,20 @@ test('Check appointment availability', async ({ page }) => {
   if (appointmentsAvailable.length) {
     const message = `Locations available:\n${appointmentsAvailable.map(appointment => `${appointment.district}, ${appointment.location}, ${appointment.attendancePlace} - Scan time (PT): ${appointment.date}`).join('\n')}`
     console.table(appointmentsAvailable)
-    await sendDiscordMessage(message)
+    try {
+      await sendDiscordMessage(message);
+      console.log('Message sent successfully');
+    } catch (error) {
+      console.error('Error sending message to Discord:', error);
+    }
   } else {
     const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' });
     const noSlotsMessage = `Unfortunately, there are no renewal slots available - Scan time (PT) ${currentDate}`;
-    await sendDiscordMessage(noSlotsMessage)
+    try {
+      await sendDiscordMessage(noSlotsMessage);
+      console.log('Message sent successfully');
+    } catch (error) {
+      console.error('Error sending message to Discord:', error);
+    }
   }
 })
